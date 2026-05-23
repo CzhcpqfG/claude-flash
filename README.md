@@ -1,31 +1,38 @@
-# autolights
+# ⚡ claude-flash
 
-Screen brightness blink notification for Claude Code hooks. Flashes the laptop backlight when Claude needs your attention — no popups, no mouse interference.
+> Your laptop screen blinks when Claude Code needs you. No popups. No mouse. No missed prompts.
+
+![platform](https://img.shields.io/badge/platform-Windows%2011-blue)
+![license](https://img.shields.io/badge/license-MIT-green)
+
+Claude Code runs in the terminal. You look away. Minutes pass. Claude is waiting for your permission — but you didn't notice.
+
+**claude-flash** blinks your laptop's backlight the moment Claude needs attention. Permission dialogs, input prompts, task completions — each gets its own visual nudge.
+
+## How it looks
+
+Your screen dims black for 400ms, snaps back for 150ms, repeats. Like someone flicking the lights — impossible to miss, no popups to dismiss.
 
 ## How it works
 
 ```
-Claude Code event → settings.json hook → light_hook.py → blink_screen.ps1 → WMI brightness blink
+Claude event → settings.json hook → light_hook.py → blink_screen.ps1 → WMI backlight blink
 ```
 
-- `light_hook.py` — Python hook dispatcher, reads event JSON from stdin
-- `blink_screen.ps1` — PowerShell WMI script, dims and restores laptop backlight
+Every blink is ~0.5 seconds. Screen brightness always restores — even if the script crashes.
 
-WMI is warmed up on `SessionStart` so subsequent blinks are instant (avoids 20-50s WMI cold start).
+## Quick start
 
-## Setup
-
-### 1. Clone and install
+**Prerequisites:** Windows laptop, Python 3, PowerShell 5+
 
 ```powershell
-git clone https://github.com/CzhcpqfG/autolights.git D:\autolights
+git clone https://github.com/CzhcpqfG/claude-flash.git D:\autolights
 ```
 
-No dependencies — just Python 3 and PowerShell.
+Then add this to your `~/.claude/settings.json`:
 
-### 2. Configure Claude Code hooks
-
-Add to `~/.claude/settings.json`:
+<details>
+<summary>Click to expand hook config</summary>
 
 ```json
 {
@@ -33,93 +40,75 @@ Add to `~/.claude/settings.json`:
     "SessionStart": [
       {
         "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "py \"D:/autolights/light_hook.py\""
-          }
-        ]
+        "hooks": [{ "type": "command", "command": "py \"D:/autolights/light_hook.py\"" }]
       }
     ],
     "PermissionRequest": [
       {
         "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "py \"D:/autolights/light_hook.py\""
-          }
-        ]
+        "hooks": [{ "type": "command", "command": "py \"D:/autolights/light_hook.py\"" }]
       }
     ],
     "Elicitation": [
       {
         "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "py \"D:/autolights/light_hook.py\""
-          }
-        ]
+        "hooks": [{ "type": "command", "command": "py \"D:/autolights/light_hook.py\"" }]
       }
     ],
     "Notification": [
       {
         "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "py \"D:/autolights/light_hook.py\""
-          }
-        ]
+        "hooks": [{ "type": "command", "command": "py \"D:/autolights/light_hook.py\"" }]
       }
     ],
     "Stop": [
       {
         "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "py \"D:/autolights/light_hook.py\""
-          }
-        ]
+        "hooks": [{ "type": "command", "command": "py \"D:/autolights/light_hook.py\"" }]
       }
     ]
   }
 }
 ```
+</details>
 
-### 3. Test
+**Test it:**
 
 ```powershell
-# Direct blink test (3 flashes)
+# Direct test — screen blinks 3 times
 powershell -ExecutionPolicy Bypass -File "D:\autolights\blink_screen.ps1" -Count 3
 
-# Hook pipeline test
+# Hook pipeline test — screen blinks 2 times
 echo '{"hook_event_name":"Stop"}' | py "D:/autolights/light_hook.py"
 ```
 
-## Events
+## Events mapped
 
-| Event | Blinks | When |
+| Claude event | Blinks | When |
 |---|---|---|
-| `SessionStart` | none | WMI warmup only |
-| `PermissionRequest` | 2 | Permission dialog appears |
-| `Elicitation` | 2 | Claude asks for input |
-| `Notification` | 2 | Desktop notification |
-| `Stop` | 2 | Task completed |
+| `PermissionRequest` | 2 | Permission dialog pops up |
+| `Elicitation` | 2 | Claude asks you a question |
+| `Notification` | 2 | Desktop notification fires |
+| `Stop` | 2 | Task finishes |
+| `SessionStart` | warmup | Primes WMI for instant response |
 
-## blink_screen.ps1 parameters
+## Tuning
 
-```
--Count 3        # Number of blinks
--DarkMs 400     # Milliseconds screen stays dim
--LightMs 150    # Milliseconds between blinks
--DimPercent 0   # Brightness level during dim (0-100)
+```powershell
+blink_screen.ps1 -Count 3 -DarkMs 600 -LightMs 100 -DimPercent 0
 ```
 
-## Requirements
+| Param | Default | What it does |
+|---|---|---|
+| `-Count` | 3 | Number of blinks |
+| `-DarkMs` | 400 | How long screen stays dim (ms) |
+| `-LightMs` | 150 | Pause between blinks (ms) |
+| `-DimPercent` | 0 | Brightness when dimmed (0 = off) |
 
-- Windows laptop with built-in display (WMI brightness control)
-- Python 3
-- PowerShell 5+
+## Why WMI
+
+Uses the same backlight API as Windows itself. Night Light and HDR keep working. External monitors are unaffected. Gamma ramp hacks break color profiles — WMI doesn't.
+
+## License
+
+MIT
