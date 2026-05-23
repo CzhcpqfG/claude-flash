@@ -1,38 +1,41 @@
-# ⚡ claude-flash
+# claude-flash
 
-> Your screen pulses when Claude Code needs you. No popups. No mouse. No missed prompts.
+> A gentle screen pulse for Claude Code prompts.
 
-![platform](https://img.shields.io/badge/platform-Windows%2011-blue)
-![license](https://img.shields.io/badge/license-MIT-green)
+Claude Code is easy to miss when it is waiting in a terminal tab. **claude-flash** adds a subtle fullscreen breathing pulse whenever Claude needs your attention — no popups, no sound, no focus stealing.
 
-Claude Code runs in the terminal. You look away. Minutes pass. Claude is waiting for your permission — but you didn't notice.
+## What it does
 
-**claude-flash** creates a fullscreen overlay pulse on every monitor the moment Claude needs attention. Permission dialogs, input prompts, task completions — each gets a gentle visual nudge.
+When Claude Code asks for input, requests permission, or finishes a task, your screen softly darkens and fades back a few times.
 
-## How it looks
+Default effect:
 
-Black semi-transparent overlay fades in for 100ms, fades out for 400ms, repeats 3 times. Like the screen taking a soft breath — noticeable but not jarring. White flash mode also available if you prefer bright alerts.
+- black translucent overlay
+- 3 slow breathing pulses
+- works across all monitors
+- never steals focus from your terminal
 
 ## How it works
 
+```text
+Claude Code hook → light_hook.py → flash_overlay.py → transparent overlay windows
 ```
-Claude event → settings.json hook → light_hook.py → flash_overlay.py → fullscreen overlay on all monitors
-```
 
-Zero dependencies beyond Python stdlib. Creates per-monitor layered windows with `WS_EX_NOACTIVATE` — never steals focus, no taskbar entry, no Alt+Tab.
+`flash_overlay.py` uses Python `ctypes` to create topmost layered windows with `WS_EX_NOACTIVATE`, so the alert is visible without changing the active window.
 
-## Quick start
+No packages required.
 
-**Prerequisites:** Windows, Python 3
+## Install
+
+Clone the repo somewhere stable, for example:
 
 ```powershell
-git clone https://github.com/CzhcpqfG/claude-flash.git D:\autolights
+git clone https://github.com/CzhcpqfG/claude-flash.git D:\claude-flash
 ```
 
-Add to `~/.claude/settings.json`:
+Then add these hooks to `~/.claude/settings.json`.
 
-<details>
-<summary>Click to expand hook config</summary>
+> If you cloned to a different location, update the path in each `command`.
 
 ```json
 {
@@ -40,76 +43,94 @@ Add to `~/.claude/settings.json`:
     "PermissionRequest": [
       {
         "matcher": "*",
-        "hooks": [{ "type": "command", "command": "py \"D:/autolights/light_hook.py\"" }]
+        "hooks": [{ "type": "command", "command": "py \"D:/claude-flash/light_hook.py\"" }]
       }
     ],
     "Elicitation": [
       {
         "matcher": "*",
-        "hooks": [{ "type": "command", "command": "py \"D:/autolights/light_hook.py\"" }]
+        "hooks": [{ "type": "command", "command": "py \"D:/claude-flash/light_hook.py\"" }]
       }
     ],
     "Notification": [
       {
         "matcher": "*",
-        "hooks": [{ "type": "command", "command": "py \"D:/autolights/light_hook.py\"" }]
+        "hooks": [{ "type": "command", "command": "py \"D:/claude-flash/light_hook.py\"" }]
       }
     ],
     "Stop": [
       {
         "matcher": "*",
-        "hooks": [{ "type": "command", "command": "py \"D:/autolights/light_hook.py\"" }]
+        "hooks": [{ "type": "command", "command": "py \"D:/claude-flash/light_hook.py\"" }]
       }
     ]
   }
 }
 ```
-</details>
 
-**Test it:**
+## Test
 
 ```powershell
-# Direct test — 3 black pulses
-py "D:/autolights/flash_overlay.py"
+# Direct pulse preview
+py "D:/claude-flash/flash_overlay.py"
 
-# White flash mode
-py "D:/autolights/flash_overlay.py" 3 100 400 100 white
-
-# Hook pipeline test
-echo '{"hook_event_name":"Stop"}' | py "D:/autolights/light_hook.py"
+# Simulate a Claude Code Stop hook
+'{"hook_event_name":"Stop"}' | py "D:/claude-flash/light_hook.py"
 ```
 
 ## Events
 
-| Claude event | Pulses | When |
-|---|---|---|
-| `PermissionRequest` | 3 | Permission dialog pops up |
-| `Elicitation` | 3 | Claude asks you a question |
-| `Notification` | 3 | Desktop notification fires |
-| `Stop` | 3 | Task finishes |
+| Claude Code event | Effect |
+|---|---|
+| `PermissionRequest` | 3 breathing pulses |
+| `Elicitation` | 3 breathing pulses |
+| `Notification` | 3 breathing pulses |
+| `Stop` | 3 breathing pulses |
 
-## Tuning
+## Customize
 
+```powershell
+py flash_overlay.py <count> <fade_in_ms> <fade_out_ms> <rest_ms> <alpha> <mode>
 ```
-flash_overlay.py <count> <dark_ms> <light_ms> <alpha> <mode>
+
+Defaults:
+
+```powershell
+py flash_overlay.py 3 450 650 700 90 black
 ```
 
-| Param | Default | What it does |
-|---|---|---|
-| `count` | 3 | Number of pulses |
-| `dark_ms` | 100 | Overlay visible duration (ms) |
-| `light_ms` | 400 | Pause between pulses (ms) |
-| `alpha` | 100 | Overlay opacity (0-255) |
-| `mode` | black | `black` or `white` |
+| Parameter | Default | Description |
+|---|---:|---|
+| `count` | `3` | Number of breathing pulses |
+| `fade_in_ms` | `450` | Time to fade the overlay in |
+| `fade_out_ms` | `650` | Time to fade the overlay out |
+| `rest_ms` | `700` | Pause between pulses |
+| `alpha` | `90` | Max opacity, from `0` to `255` |
+| `mode` | `black` | `black` or `white` overlay |
 
-## Why overlay instead of brightness
+Examples:
 
-- **Instant** — no WMI cold start delay
-- **All monitors** — works on external displays
-- **Safe** — doesn't touch backlight, HDR, or Night Light
-- **Focus-safe** — `WS_EX_NOACTIVATE` keeps terminal in focus
+```powershell
+# Softer
+py flash_overlay.py 3 500 700 800 60 black
 
-Also includes `blink_screen.ps1` (WMI brightness approach) as a fallback.
+# More noticeable
+py flash_overlay.py 4 350 500 500 120 black
+
+# Bright flash mode
+py flash_overlay.py 3 120 180 300 120 white
+```
+
+## Why not use screen brightness?
+
+Brightness APIs are slow to warm up, usually affect only laptop panels, and may not work on external monitors. The overlay approach is instant, reversible, and display-agnostic.
+
+`blink_screen.ps1` is kept as a fallback for people who prefer real backlight blinking.
+
+## Requirements
+
+- Windows
+- Python 3
 
 ## License
 

@@ -1,4 +1,4 @@
-"""Fullscreen overlay flash — camera-flash effect on all monitors.
+"""Fullscreen overlay pulse on all monitors.
 Zero dependencies (ctypes only). No focus steal, no taskbar entry.
 """
 import ctypes
@@ -50,7 +50,20 @@ def _wndproc(hwnd, msg, wparam, lparam):
     return user32.DefWindowProcW(hwnd, msg, wparam, lparam)
 
 
-def flash(count=3, dark_ms=100, light_ms=400, alpha=100, mode="black"):
+def _ease_in_out(t):
+    return 0.5 - 0.5 * __import__("math").cos(t * __import__("math").pi)
+
+
+def _set_alpha(hwnds, alpha):
+    for hwnd in hwnds:
+        user32.SetLayeredWindowAttributes(hwnd, 0, alpha, LWA_ALPHA)
+
+
+def _sleep_ms(ms):
+    time.sleep(ms / 1000.0)
+
+
+def pulse(count=3, fade_in_ms=450, fade_out_ms=650, rest_ms=700, alpha=90, mode="black"):
     rects = []
 
     @MonitorCB
@@ -64,8 +77,7 @@ def flash(count=3, dark_ms=100, light_ms=400, alpha=100, mode="black"):
         return
 
     hinst = kernel32.GetModuleHandleW(None)
-    cls_name = "ClaudeFlashV3"
-
+    cls_name = "ClaudeFlashBreathV1"
     brush = BRUSHES.get(mode, 4)
 
     wc = WNDCLASSW()
@@ -89,25 +101,32 @@ def flash(count=3, dark_ms=100, light_ms=400, alpha=100, mode="black"):
                     None, None, hinst, None
                 )
                 if hwnd:
-                    user32.SetLayeredWindowAttributes(hwnd, 0, alpha, LWA_ALPHA)
+                    user32.SetLayeredWindowAttributes(hwnd, 0, 0, LWA_ALPHA)
                     user32.ShowWindow(hwnd, 5)
                     hwnds.append(hwnd)
 
-            time.sleep(dark_ms / 1000.0)
+            for step in range(1, 13):
+                _set_alpha(hwnds, int(alpha * _ease_in_out(step / 12)))
+                _sleep_ms(fade_in_ms / 12)
+
+            for step in range(11, -1, -1):
+                _set_alpha(hwnds, int(alpha * _ease_in_out(step / 12)))
+                _sleep_ms(fade_out_ms / 12)
 
             for hwnd in hwnds:
                 user32.DestroyWindow(hwnd)
 
             if i < count - 1:
-                time.sleep(light_ms / 1000.0)
+                _sleep_ms(rest_ms)
     finally:
         user32.UnregisterClassW(atom, hinst)
 
 
 if __name__ == "__main__":
     count = int(sys.argv[1]) if len(sys.argv) > 1 else 3
-    dark_ms = int(sys.argv[2]) if len(sys.argv) > 2 else 100
-    light_ms = int(sys.argv[3]) if len(sys.argv) > 3 else 400
-    alpha = int(sys.argv[4]) if len(sys.argv) > 4 else 100
-    mode = sys.argv[5] if len(sys.argv) > 5 else "black"
-    flash(count, dark_ms, light_ms, alpha, mode)
+    fade_in_ms = int(sys.argv[2]) if len(sys.argv) > 2 else 450
+    fade_out_ms = int(sys.argv[3]) if len(sys.argv) > 3 else 650
+    rest_ms = int(sys.argv[4]) if len(sys.argv) > 4 else 700
+    alpha = int(sys.argv[5]) if len(sys.argv) > 5 else 90
+    mode = sys.argv[6] if len(sys.argv) > 6 else "black"
+    pulse(count, fade_in_ms, fade_out_ms, rest_ms, alpha, mode)
