@@ -27,15 +27,21 @@ No packages required.
 
 ## Install
 
-Clone the repo somewhere stable, for example:
+Clone the repo somewhere stable:
 
 ```powershell
-git clone https://github.com/CzhcpqfG/claude-flash.git D:\claude-flash
+git clone https://github.com/<your-user>/claude-flash.git <install-dir>
 ```
 
-Then add these hooks to `~/.claude/settings.json`.
+For example:
 
-> If you cloned to a different location, update the path in each `command`.
+```powershell
+git clone https://github.com/<your-user>/claude-flash.git C:\Tools\claude-flash
+```
+
+Then add hooks to your Claude Code `settings.json`.
+
+Replace `<install-dir>` with the absolute path where you cloned the repo. Use forward slashes in the hook command path.
 
 ```json
 {
@@ -43,39 +49,45 @@ Then add these hooks to `~/.claude/settings.json`.
     "PermissionRequest": [
       {
         "matcher": "*",
-        "hooks": [{ "type": "command", "command": "py \"D:/claude-flash/light_hook.py\"" }]
+        "hooks": [{ "type": "command", "command": "py \"<install-dir>/light_hook.py\"" }]
       }
     ],
     "Elicitation": [
       {
         "matcher": "*",
-        "hooks": [{ "type": "command", "command": "py \"D:/claude-flash/light_hook.py\"" }]
+        "hooks": [{ "type": "command", "command": "py \"<install-dir>/light_hook.py\"" }]
       }
     ],
     "Notification": [
       {
         "matcher": "*",
-        "hooks": [{ "type": "command", "command": "py \"D:/claude-flash/light_hook.py\"" }]
+        "hooks": [{ "type": "command", "command": "py \"<install-dir>/light_hook.py\"" }]
       }
     ],
     "Stop": [
       {
         "matcher": "*",
-        "hooks": [{ "type": "command", "command": "py \"D:/claude-flash/light_hook.py\"" }]
+        "hooks": [{ "type": "command", "command": "py \"<install-dir>/light_hook.py\"" }]
       }
     ]
   }
 }
 ```
 
+Example if installed at `C:\Tools\claude-flash`:
+
+```json
+"command": "py \"C:/Tools/claude-flash/light_hook.py\""
+```
+
 ## Test
 
 ```powershell
 # Direct pulse preview
-py "D:/claude-flash/flash_overlay.py"
+py "<install-dir>/flash_overlay.py"
 
 # Simulate a Claude Code Stop hook
-'{"hook_event_name":"Stop"}' | py "D:/claude-flash/light_hook.py"
+'{"hook_event_name":"Stop"}' | py "<install-dir>/light_hook.py"
 ```
 
 ## Events
