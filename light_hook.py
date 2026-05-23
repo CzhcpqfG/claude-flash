@@ -1,37 +1,24 @@
 # -*- coding: utf-8 -*-
 """
-Claude Code Hook: Screen Brightness Blink
+Claude Code Hook: Fullscreen Overlay Flash
 
-Reads hook event JSON from stdin, blinks screen on Notification/Stop.
-Warms up WMI on SessionStart so subsequent blinks are instant.
+Reads hook event JSON from stdin, flashes screen on Claude events.
+Uses flash_overlay.py — camera-flash effect, all monitors, zero delay.
 """
 import sys
 import json
 import subprocess
 import os
 
-BLINK_SCRIPT = r'D:\autolights\blink_screen.ps1'
+FLASH_SCRIPT = r'D:\autolights\flash_overlay.py'
 
 
-def warmup_wmi():
-    """Query WMI brightness once so subsequent calls avoid 20-50s cold start."""
-    try:
-        subprocess.run(
-            ['powershell', '-ExecutionPolicy', 'Bypass', '-Command',
-             'Get-CimInstance -Namespace root/WMI -ClassName WmiMonitorBrightness | Out-Null'],
-            capture_output=True, timeout=30
-        )
-    except Exception:
-        pass
-
-
-def trigger_blink(count):
-    if not os.path.exists(BLINK_SCRIPT):
+def trigger_flash(count=3):
+    if not os.path.exists(FLASH_SCRIPT):
         return
     try:
         subprocess.run(
-            ['powershell', '-ExecutionPolicy', 'Bypass', '-File', BLINK_SCRIPT,
-             '-Count', str(count)],
+            ['py', FLASH_SCRIPT, str(count)],
             capture_output=True, timeout=10
         )
     except Exception:
@@ -47,14 +34,9 @@ def main():
         event = json.loads(data)
         event_type = event.get("hook_event_name", event.get("event"))
 
-        if event_type == "SessionStart":
-            warmup_wmi()
-        elif event_type in ("PermissionRequest", "Elicitation"):
-            trigger_blink(2)
-        elif event_type == "Notification":
-            trigger_blink(2)
-        elif event_type == "Stop":
-            trigger_blink(2)
+        if event_type in ("SessionStart", "PermissionRequest", "Elicitation",
+                          "Notification", "Stop"):
+            trigger_flash(2)
     except Exception:
         pass
 

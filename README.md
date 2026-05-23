@@ -1,35 +1,35 @@
 # ⚡ claude-flash
 
-> Your laptop screen blinks when Claude Code needs you. No popups. No mouse. No missed prompts.
+> Your screen pulses when Claude Code needs you. No popups. No mouse. No missed prompts.
 
 ![platform](https://img.shields.io/badge/platform-Windows%2011-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
 Claude Code runs in the terminal. You look away. Minutes pass. Claude is waiting for your permission — but you didn't notice.
 
-**claude-flash** blinks your laptop's backlight the moment Claude needs attention. Permission dialogs, input prompts, task completions — each gets its own visual nudge.
+**claude-flash** creates a fullscreen overlay pulse on every monitor the moment Claude needs attention. Permission dialogs, input prompts, task completions — each gets a gentle visual nudge.
 
 ## How it looks
 
-Your screen dims black for 400ms, snaps back for 150ms, repeats. Like someone flicking the lights — impossible to miss, no popups to dismiss.
+Black semi-transparent overlay fades in for 100ms, fades out for 400ms, repeats 3 times. Like the screen taking a soft breath — noticeable but not jarring. White flash mode also available if you prefer bright alerts.
 
 ## How it works
 
 ```
-Claude event → settings.json hook → light_hook.py → blink_screen.ps1 → WMI backlight blink
+Claude event → settings.json hook → light_hook.py → flash_overlay.py → fullscreen overlay on all monitors
 ```
 
-Every blink is ~0.5 seconds. Screen brightness always restores — even if the script crashes.
+Zero dependencies beyond Python stdlib. Creates per-monitor layered windows with `WS_EX_NOACTIVATE` — never steals focus, no taskbar entry, no Alt+Tab.
 
 ## Quick start
 
-**Prerequisites:** Windows laptop, Python 3, PowerShell 5+
+**Prerequisites:** Windows, Python 3
 
 ```powershell
 git clone https://github.com/CzhcpqfG/claude-flash.git D:\autolights
 ```
 
-Then add this to your `~/.claude/settings.json`:
+Add to `~/.claude/settings.json`:
 
 <details>
 <summary>Click to expand hook config</summary>
@@ -37,12 +37,6 @@ Then add this to your `~/.claude/settings.json`:
 ```json
 {
   "hooks": {
-    "SessionStart": [
-      {
-        "matcher": "*",
-        "hooks": [{ "type": "command", "command": "py \"D:/autolights/light_hook.py\"" }]
-      }
-    ],
     "PermissionRequest": [
       {
         "matcher": "*",
@@ -75,39 +69,47 @@ Then add this to your `~/.claude/settings.json`:
 **Test it:**
 
 ```powershell
-# Direct test — screen blinks 3 times
-powershell -ExecutionPolicy Bypass -File "D:\autolights\blink_screen.ps1" -Count 3
+# Direct test — 3 black pulses
+py "D:/autolights/flash_overlay.py"
 
-# Hook pipeline test — screen blinks 2 times
+# White flash mode
+py "D:/autolights/flash_overlay.py" 3 100 400 100 white
+
+# Hook pipeline test
 echo '{"hook_event_name":"Stop"}' | py "D:/autolights/light_hook.py"
 ```
 
-## Events mapped
+## Events
 
-| Claude event | Blinks | When |
+| Claude event | Pulses | When |
 |---|---|---|
-| `PermissionRequest` | 2 | Permission dialog pops up |
-| `Elicitation` | 2 | Claude asks you a question |
-| `Notification` | 2 | Desktop notification fires |
-| `Stop` | 2 | Task finishes |
-| `SessionStart` | warmup | Primes WMI for instant response |
+| `PermissionRequest` | 3 | Permission dialog pops up |
+| `Elicitation` | 3 | Claude asks you a question |
+| `Notification` | 3 | Desktop notification fires |
+| `Stop` | 3 | Task finishes |
 
 ## Tuning
 
-```powershell
-blink_screen.ps1 -Count 3 -DarkMs 600 -LightMs 100 -DimPercent 0
+```
+flash_overlay.py <count> <dark_ms> <light_ms> <alpha> <mode>
 ```
 
 | Param | Default | What it does |
 |---|---|---|
-| `-Count` | 3 | Number of blinks |
-| `-DarkMs` | 400 | How long screen stays dim (ms) |
-| `-LightMs` | 150 | Pause between blinks (ms) |
-| `-DimPercent` | 0 | Brightness when dimmed (0 = off) |
+| `count` | 3 | Number of pulses |
+| `dark_ms` | 100 | Overlay visible duration (ms) |
+| `light_ms` | 400 | Pause between pulses (ms) |
+| `alpha` | 100 | Overlay opacity (0-255) |
+| `mode` | black | `black` or `white` |
 
-## Why WMI
+## Why overlay instead of brightness
 
-Uses the same backlight API as Windows itself. Night Light and HDR keep working. External monitors are unaffected. Gamma ramp hacks break color profiles — WMI doesn't.
+- **Instant** — no WMI cold start delay
+- **All monitors** — works on external displays
+- **Safe** — doesn't touch backlight, HDR, or Night Light
+- **Focus-safe** — `WS_EX_NOACTIVATE` keeps terminal in focus
+
+Also includes `blink_screen.ps1` (WMI brightness approach) as a fallback.
 
 ## License
 
